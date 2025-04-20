@@ -1,0 +1,2360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SafePost - A Safe Social Media Platform</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Space Grotesk', sans-serif;
+            background-color: #f8ecde;
+        }
+        .neubrutalism {
+            border: 3px solid #000;
+            box-shadow: 8px 8px 0px #000;
+            transition: all 0.2s ease;
+            border-radius: 0;
+        }
+        .neubrutalism:hover {
+            transform: translate(-2px, -2px);
+            box-shadow: 10px 10px 0px #000;
+        }
+        .neubrutalism:active {
+            transform: translate(2px, 2px);
+            box-shadow: 6px 6px 0px #000;
+        }
+        .loading {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 1000;
+        }
+        #imagePreview, #profileImagePreview {
+            max-width: 300px;
+            max-height: 300px;
+            object-fit: contain;
+        }
+        .btn-primary {
+            background-color: #FF8E3C;
+            color: #0F0E17;
+        }
+        .btn-secondary {
+            background-color: #FED9B7;
+            color: #0F0E17;
+        }
+        .btn-danger {
+            background-color: #E53170;
+            color: white;
+        }
+        .btn-success {
+            background-color: #00EBC7;
+            color: #0F0E17;
+        }
+        .text-primary {
+            color: #0F0E17;
+        }
+        nav {
+            background-color: #FF8E3C;
+            color: #0F0E17;
+        }
+        .post-container {
+            background-color: #FFFFFE;
+            border: 3px solid #0F0E17;
+            box-shadow: 8px 8px 0px #0F0E17;
+        }
+        .messages-container {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .message-bubble {
+            max-width: 80%;
+            margin-bottom: 8px;
+        }
+        .message-sent {
+            background-color: #FF8E3C;
+            margin-left: auto;
+            border-radius: 0px;
+            border: 2px solid #0F0E17;
+        }
+        .message-received {
+            background-color: #FED9B7;
+            border-radius: 0px;
+            border: 2px solid #0F0E17;
+        }
+        .grid-posts {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+        }
+        @media (max-width: 768px) {
+            .grid-posts {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        @media (max-width: 480px) {
+            .grid-posts {
+                grid-template-columns: 1fr;
+            }
+        }
+        /* Custom scrollbar for neubrutalism */
+        ::-webkit-scrollbar {
+            width: 12px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #fffffe;
+            border: 2px solid #0F0E17;
+        }
+        ::-webkit-scrollbar-thumb {
+            background-color: #FF8E3C;
+            border: 2px solid #0F0E17;
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+    <div class="loading bg-white p-4 rounded-lg neubrutalism">
+        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+        <p class="mt-2">Processing...</p>
+    </div>
+
+    <!-- Auth Container -->
+    <div id="authContainer" class="container mx-auto px-4 py-8">
+        <div class="max-w-md mx-auto bg-white p-8 neubrutalism">
+            <h1 class="text-3xl font-bold mb-6 text-center text-primary">SafePost</h1>
+            <p class="text-center mb-4">A safe social media platform for everyone</p>
+            <div id="loginForm">
+                <h2 class="text-2xl mb-4 text-primary">Login</h2>
+                <input type="text" id="loginUsername" placeholder="Username" class="w-full mb-3 p-3 neubrutalism">
+                <input type="password" id="loginPassword" placeholder="Password" class="w-full mb-3 p-3 neubrutalism">
+                <button onclick="login()" class="w-full btn-primary p-3 mb-3 neubrutalism font-bold">Login</button>
+                <p class="text-center">Don't have an account? <a href="#" onclick="toggleAuth()" class="text-blue-500 font-bold">Register</a></p>
+            </div>
+            <div id="registerForm" class="hidden">
+                <h2 class="text-2xl mb-4 text-primary">Register</h2>
+                <input type="text" id="regUsername" placeholder="Username" class="w-full mb-3 p-3 neubrutalism">
+                <input type="password" id="regPassword" placeholder="Password" class="w-full mb-3 p-3 neubrutalism">
+                <input type="text" id="regEmail" placeholder="Email" class="w-full mb-3 p-3 neubrutalism">
+                <div class="mb-3">
+                    <label class="block mb-2">Profile Picture</label>
+                    <input type="file" id="profilePicUpload" accept="image/*" class="mb-2">
+                    <img id="profileImagePreview" class="hidden mb-2 neubrutalism">
+                </div>
+                <button onclick="register()" class="w-full btn-success p-3 mb-3 neubrutalism font-bold">Register</button>
+                <p class="text-center">Already have an account? <a href="#" onclick="toggleAuth()" class="text-blue-500 font-bold">Login</a></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main App Container -->
+    <div id="appContainer" class="hidden">
+        <!-- Navigation -->
+        <nav class="border-b-2 border-black p-4 sticky top-0 z-10">
+            <div class="container mx-auto flex flex-col md:flex-row justify-between items-center">
+                <h1 class="text-2xl font-bold mb-2 md:mb-0">SafePost</h1>
+                <div class="flex flex-col md:flex-row items-center space-y-2 md:space-y-0 md:space-x-4 w-full md:w-auto">
+                    <div class="relative w-full md:w-64">
+                        <input type="text" id="searchUser" placeholder="Search users..." class="p-2 pr-8 w-full neubrutalism">
+                        <span class="absolute right-3 top-2.5"><i class="bi bi-search"></i></span>
+                        <div id="searchResults" class="absolute w-full mt-1 bg-white neubrutalism hidden z-20">
+                            <!-- Search results will be shown here -->
+                        </div>
+                    </div>
+                    <div class="flex space-x-2 w-full md:w-auto">
+                        <button onclick="showCreatePost()" class="btn-primary p-2 neubrutalism flex-1 md:flex-none">
+                            <i class="bi bi-plus-lg"></i> Create Post
+                        </button>
+                        <button onclick="showMessages()" class="btn-secondary p-2 neubrutalism flex-1 md:flex-none">
+                            <i class="bi bi-chat-dots"></i> Messages
+                        </button>
+                        <button onclick="showProfile()" class="btn-secondary p-2 neubrutalism flex-1 md:flex-none">
+                            <i class="bi bi-person-circle"></i> Profile
+                        </button>
+                        <button onclick="logout()" class="btn-danger p-2 neubrutalism flex-1 md:flex-none">
+                            <i class="bi bi-box-arrow-right"></i> Logout
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <div class="container mx-auto px-4 py-8">
+            <!-- Create Post Modal -->
+            <div id="createPostModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-20 p-4">
+                <div class="bg-white p-8 neubrutalism max-w-lg w-full">
+                    <h2 class="text-2xl mb-4 text-primary">Create Post</h2>
+                    <textarea id="postContent" placeholder="What's on your mind?" class="w-full p-3 mb-4 h-32 neubrutalism"></textarea>
+                    <div class="mb-4">
+                        <label class="block mb-2">Upload Media</label>
+                        <input type="file" id="mediaUpload" accept="image/*,video/*" class="mb-2">
+                        <img id="imagePreview" class="hidden mb-2 neubrutalism">
+                    </div>
+                    <div class="flex justify-end space-x-4">
+                        <button onclick="closeCreatePost()" class="bg-gray-200 p-3 neubrutalism">Cancel</button>
+                        <button onclick="createPost()" class="btn-primary p-3 neubrutalism">Post</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Messages Modal -->
+            <div id="messagesModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-20 p-4">
+                <div class="bg-white p-8 neubrutalism max-w-2xl w-full max-h-[90vh] flex flex-col">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-2xl text-primary">Messages</h2>
+                        <button onclick="closeMessages()" class="text-gray-500">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                    </div>
+                    
+                    <div class="flex h-full">
+                        <!-- Conversations List -->
+                        <div class="w-1/3 border-r border-gray-300 overflow-y-auto pr-2 max-h-[60vh]">
+                            <div class="mb-2">
+                                <input type="text" id="messageSearchUser" placeholder="Search users..." class="w-full p-2 neubrutalism mb-2">
+                                <div id="messageSearchResults" class="mb-2 hidden">
+                                    <!-- Message search results go here -->
+                                </div>
+                            </div>
+                            <div id="conversationsList">
+                                <!-- Conversations will be loaded here -->
+                                <div class="text-center p-4 text-gray-500">
+                                    <p>No conversations yet</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Message Thread -->
+                        <div class="w-2/3 pl-2 flex flex-col h-full">
+                            <div id="currentChatHeader" class="pb-2 border-b border-gray-300 flex items-center">
+                                <p class="text-gray-500">Select a conversation or start a new one</p>
+                            </div>
+                            
+                            <div id="messageThread" class="messages-container flex-1 py-2 max-h-[40vh] overflow-y-auto">
+                                <!-- Messages will be loaded here -->
+                            </div>
+                            
+                            <div id="sendMessageForm" class="pt-2 mt-auto hidden">
+                                <div class="flex">
+                                    <input type="text" id="messageInput" placeholder="Type a message..." class="flex-1 p-2 neubrutalism">
+                                    <button onclick="sendMessage()" class="ml-2 btn-primary p-2 neubrutalism">
+                                        <i class="bi bi-send"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Profile Modal -->
+            <div id="profileModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-20 p-4">
+                <div class="bg-white p-8 neubrutalism max-w-lg w-full max-h-[90vh] overflow-y-auto">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-2xl text-primary">Your Profile</h2>
+                        <button onclick="closeProfile()" class="text-gray-500">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                    </div>
+                    <div class="flex flex-col items-center mb-4">
+                        <img id="currentProfilePic" src="https://via.placeholder.com/150" alt="Profile" class="w-24 h-24 rounded-full neubrutalism object-cover mb-4">
+                        <button onclick="showUpdateProfilePic()" class="btn-secondary p-2 neubrutalism">
+                            <i class="bi bi-camera"></i> Update Profile Picture
+                        </button>
+                    </div>
+                    <div id="updateProfilePicForm" class="hidden mb-4">
+                        <input type="file" id="newProfilePic" accept="image/*" class="mb-2">
+                        <img id="newProfilePicPreview" class="hidden mb-2 w-full h-32 object-cover neubrutalism">
+                        <button onclick="updateProfilePic()" class="btn-primary p-2 neubrutalism">
+                            Save Picture
+                        </button>
+                    </div>
+                    <div class="mb-4">
+                        <h3 class="font-bold mb-2">Username:</h3>
+                        <p id="profileUsername" class="mb-2"></p>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4 mb-4">
+                        <div class="text-center neubrutalism p-4">
+                            <p class="text-lg font-bold" id="followerCount">0</p>
+                            <p>Followers</p>
+                        </div>
+                        <div class="text-center neubrutalism p-4">
+                            <p class="text-lg font-bold" id="followingCount">0</p>
+                            <p>Following</p>
+                        </div>
+                    </div>
+                    <h3 class="font-bold mb-2">Your Posts</h3>
+                    <div id="userPosts" class="grid-posts">
+                        <!-- User posts will be loaded here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- User Profile Modal -->
+            <div id="userProfileModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-20 p-4">
+                <div class="bg-white p-8 neubrutalism max-w-lg w-full max-h-[90vh] overflow-y-auto">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-2xl text-primary" id="userProfileName">User Profile</h2>
+                        <button onclick="closeUserProfile()" class="text-gray-500">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                    </div>
+                    <div class="flex flex-col items-center mb-4">
+                        <img id="userProfilePic" src="https://via.placeholder.com/150" alt="Profile" class="w-24 h-24 rounded-full neubrutalism object-cover mb-4">
+                        <div class="flex space-x-2">
+                            <button id="followToggleBtn" onclick="toggleFollow()" class="btn-primary p-2 neubrutalism">
+                                Follow
+                            </button>
+                            <button onclick="startConversation()" class="btn-secondary p-2 neubrutalism">
+                                <i class="bi bi-chat-dots"></i> Message
+                            </button>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4 mb-4">
+                        <div class="text-center neubrutalism p-4">
+                            <p class="text-lg font-bold" id="userFollowerCount">0</p>
+                            <p>Followers</p>
+                        </div>
+                        <div class="text-center neubrutalism p-4">
+                            <p class="text-lg font-bold" id="userFollowingCount">0</p>
+                            <p>Following</p>
+                        </div>
+                    </div>
+                    <h3 class="font-bold mb-2">Posts</h3>
+                    <div id="viewedUserPosts" class="grid-posts">
+                        <!-- User posts will be loaded here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Post Detail Modal -->
+            <div id="postDetailModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-30 p-4">
+                <div class="bg-white p-8 neubrutalism max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-2xl text-primary">Post Details</h2>
+                        <button onclick="closePostDetail()" class="text-gray-500">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                    </div>
+                    <div id="postDetailContent">
+                        <!-- Post details will be loaded here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Feed -->
+            <div id="feed" class="grid grid-cols-1 gap-8 max-w-2xl mx-auto">
+                <!-- Posts will be dynamically added here -->
+                <div class="text-center p-8">
+                    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-4"></div>
+                    <p>Loading posts...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentUser = null;
+        const appSlug = 'safepost-app-123456';
+        let currentViewedUser = null;
+        let currentChatUser = null;
+        let conversations = [];
+        let currentPostDetail = null;
+        
+        // Show loading animation
+        function showLoading() {
+            document.querySelector('.loading').style.display = 'block';
+        }
+
+        // Hide loading animation
+        function hideLoading() {
+            document.querySelector('.loading').style.display = 'none';
+        }
+
+        // Auth Functions
+        async function login() {
+            showLoading();
+            const username = document.getElementById('loginUsername').value;
+            const password = document.getElementById('loginPassword').value;
+
+            if (!username || !password) {
+                alert('Please enter both username and password');
+                hideLoading();
+                return;
+            }
+
+            try {
+                const response = await fetch('https://r0c8kgwocscg8gsokogwwsw4.zetaverse.one/mongodb', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer cR0B7wyVLcbjtIyuwRyQp7R3y2r2',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        appSlug,
+                        action: 'read',
+                        collection: 'users',
+                        conditions: { username, password }
+                    })
+                });
+
+                const data = await response.json();
+                if (data.result && data.result.length > 0) {
+                    currentUser = data.result[0];
+                    document.getElementById('authContainer').classList.add('hidden');
+                    document.getElementById('appContainer').classList.remove('hidden');
+                    document.getElementById('profileUsername').textContent = currentUser.username;
+                    
+                    if (currentUser.profilePicture) {
+                        document.getElementById('currentProfilePic').src = currentUser.profilePicture;
+                    }
+                    
+                    loadFeed();
+                    loadConversations();
+                } else {
+                    alert('Invalid credentials');
+                }
+            } catch (error) {
+                console.error('Login error:', error);
+                alert('An error occurred during login. Please try again.');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        async function register() {
+            showLoading();
+            const username = document.getElementById('regUsername').value;
+            const password = document.getElementById('regPassword').value;
+            const email = document.getElementById('regEmail').value;
+            const profilePicFile = document.getElementById('profilePicUpload').files[0];
+
+            if (!username || !password || !email) {
+                alert('Please fill all required fields');
+                hideLoading();
+                return;
+            }
+
+            // Check username length
+            if (username.length < 3) {
+                alert('Username should be at least 3 characters long');
+                hideLoading();
+                return;
+            }
+
+            try {
+                // Check if username exists
+                const checkUser = await fetch('https://r0c8kgwocscg8gsokogwwsw4.zetaverse.one/mongodb', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer cR0B7wyVLcbjtIyuwRyQp7R3y2r2',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        appSlug,
+                        action: 'read',
+                        collection: 'users',
+                        conditions: { username }
+                    })
+                });
+
+                const existingUser = await checkUser.json();
+                if (existingUser.result && existingUser.result.length > 0) {
+                    alert('Username already exists');
+                    hideLoading();
+                    return;
+                }
+
+                let profilePicUrl = '';
+                
+                // Upload profile picture if provided
+                if (profilePicFile) {
+                    const formData = new FormData();
+                    formData.append('file', profilePicFile);
+                    formData.append('userId', username);
+                    formData.append('appSlug', appSlug);
+
+                    const uploadResponse = await fetch('https://r0c8kgwocscg8gsokogwwsw4.zetaverse.one/storage/upload', {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': 'Bearer cR0B7wyVLcbjtIyuwRyQp7R3y2r2'
+                        },
+                        body: formData
+                    });
+
+                    const uploadData = await uploadResponse.json();
+                    if (uploadData.success) {
+                        profilePicUrl = uploadData.url;
+                    }
+                }
+
+                // Create user in database
+                const response = await fetch('https://r0c8kgwocscg8gsokogwwsw4.zetaverse.one/mongodb', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer cR0B7wyVLcbjtIyuwRyQp7R3y2r2',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        appSlug,
+                        action: 'create',
+                        collection: 'users',
+                        data: {
+                            username,
+                            password,
+                            email,
+                            profilePicture: profilePicUrl,
+                            followers: [],
+                            following: [],
+                            createdAt: new Date().toISOString()
+                        }
+                    })
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    alert('Registration successful! Please login.');
+                    toggleAuth();
+                    document.getElementById('regUsername').value = '';
+                    document.getElementById('regPassword').value = '';
+                    document.getElementById('regEmail').value = '';
+                    document.getElementById('profilePicUpload').value = '';
+                    document.getElementById('profileImagePreview').classList.add('hidden');
+                } else {
+                    alert('Registration failed. Please try again.');
+                }
+            } catch (error) {
+                console.error('Registration error:', error);
+                alert('An error occurred during registration. Please try again.');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        async function createPost() {
+            showLoading();
+            const content = document.getElementById('postContent').value;
+            const mediaFile = document.getElementById('mediaUpload').files[0];
+            
+            if (!content && !mediaFile) {
+                alert('Please add some content or media to your post');
+                hideLoading();
+                return;
+            }
+
+            try {
+                let mediaUrl = '';
+
+                if (mediaFile) {
+                    const formData = new FormData();
+                    formData.append('file', mediaFile);
+                    formData.append('userId', currentUser.username);
+                    formData.append('appSlug', appSlug);
+
+                    const uploadResponse = await fetch('https://r0c8kgwocscg8gsokogwwsw4.zetaverse.one/storage/upload', {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': 'Bearer cR0B7wyVLcbjtIyuwRyQp7R3y2r2'
+                        },
+                        body: formData
+                    });
+
+                    const uploadData = await uploadResponse.json();
+                    if (uploadData.success) {
+                        mediaUrl = uploadData.url;
+
+                        // Check for inappropriate content
+                        const aiResponse = await fetch('https://r0c8kgwocscg8gsokogwwsw4.zetaverse.one/ai', {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': 'Bearer cR0B7wyVLcbjtIyuwRyQp7R3y2r2',
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                messages: [{
+                                    role: "user",
+                                    content: [{
+                                        type: "text",
+                                        text: "Check if this image contains any inappropriate content, nudity, violence, or harmful material. Respond only with 'appropriate' if the image is safe, or describe briefly what inappropriate content is detected."
+                                    }, {
+                                        type: "image_url",
+                                        image_url: { url: mediaUrl }
+                                    }]
+                                }]
+                            })
+                        });
+
+                        const aiData = await aiResponse.json();
+                        const aiMessage = aiData.message.toLowerCase();
+                        
+                        if (aiMessage.includes('inappropriate') || 
+                            aiMessage.includes('nudity') || 
+                            aiMessage.includes('violence') ||
+                            aiMessage.includes('harmful') ||
+                            aiMessage.includes('explicit')) {
+                            alert('Warning: Inappropriate content detected. Post cannot be published.');
+                            hideLoading();
+                            return;
+                        }
+                    }
+                }
+
+                // Also check text content for harmful language
+                if (content) {
+                    const contentCheckResponse = await fetch('https://r0c8kgwocscg8gsokogwwsw4.zetaverse.one/ai', {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': 'Bearer cR0B7wyVLcbjtIyuwRyQp7R3y2r2',
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            messages: [{
+                                role: "user",
+                                content: [{
+                                    type: "text",
+                                    text: `Check if this text contains harmful, inappropriate, or offensive content: "${content}". Respond only with 'appropriate' if the text is safe, or describe what inappropriate content is detected.`
+                                }]
+                            }]
+                        })
+                    });
+
+                    const contentCheckData = await contentCheckResponse.json();
+                    const contentCheckMessage = contentCheckData.message.toLowerCase();
+                    
+                    if (contentCheckMessage !== 'appropriate' && 
+                        (contentCheckMessage.includes('inappropriate') || 
+                        contentCheckMessage.includes('harmful') || 
+                        contentCheckMessage.includes('offensive'))) {
+                        alert('Warning: Inappropriate language detected. Post cannot be published.');
+                        hideLoading();
+                        return;
+                    }
+                }
+
+                const response = await fetch('https://r0c8kgwocscg8gsokogwwsw4.zetaverse.one/mongodb', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer cR0B7wyVLcbjtIyuwRyQp7R3y2r2',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        appSlug,
+                        action: 'create',
+                        collection: 'posts',
+                        data: {
+                            content,
+                            mediaUrl,
+                            username: currentUser.username,
+                            timestamp: new Date().toISOString(),
+                            likes: [],
+                            comments: []
+                        }
+                    })
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    closeCreatePost();
+                    loadFeed();
+                } else {
+                    alert('Failed to create post. Please try again.');
+                }
+            } catch (error) {
+                console.error('Create post error:', error);
+                alert('An error occurred. Please try again.');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        async function loadFeed() {
+            showLoading();
+            try {
+                const response = await fetch('https://r0c8kgwocscg8gsokogwwsw4.zetaverse.one/mongodb', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer cR0B7wyVLcbjtIyuwRyQp7R3y2r2',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        appSlug,
+                        action: 'read',
+                        collection: 'posts'
+                    })
+                });
+
+                const data = await response.json();
+                const feed = document.getElementById('feed');
+                feed.innerHTML = '';
+
+                if (data.result && data.result.length > 0) {
+                    // Sort posts by timestamp (newest first)
+                    data.result.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+                    
+                    for (const post of data.result) {
+                        await renderPost(post, feed);
+                    }
+                } else {
+                    feed.innerHTML = `
+                        <div class="bg-white p-8 neubrutalism text-center">
+                            <p class="text-xl">No posts yet. Be the first to post something!</p>
+                            <button onclick="showCreatePost()" class="mt-4 btn-primary p-3 neubrutalism">
+                                <i class="bi bi-plus-lg"></i> Create Post
+                            </button>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('Load feed error:', error);
+                document.getElementById('feed').innerHTML = `
+                    <div class="bg-white p-8 neubrutalism text-center">
+                        <p class="text-xl text-red-500">Failed to load posts. Please try again.</p>
+                        <button onclick="loadFeed()" class="mt-4 btn-primary p-3 neubrutalism">
+                            Retry
+                        </button>
+                    </div>
+                `;
+            } finally {
+                hideLoading();
+            }
+        }
+
+        async function renderPost(post, container) {
+            try {
+                // Get user profile pic
+                const userResponse = await fetch('https://r0c8kgwocscg8gsokogwwsw4.zetaverse.one/mongodb', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer cR0B7wyVLcbjtIyuwRyQp7R3y2r2',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        appSlug,
+                        action: 'read',
+                        collection: 'users',
+                        conditions: { username: post.username }
+                    })
+                });
+
+                const userData = await userResponse.json();
+                const user = userData.result && userData.result.length > 0 ? userData.result[0] : null;
+                const profilePic = user && user.profilePicture ? user.profilePicture : 'https://via.placeholder.com/150';
+
+                const postElement = document.createElement('div');
+                postElement.className = 'post-container p-6';
+                postElement.setAttribute('data-post-id', post._id);
+                
+                let mediaContent = '';
+                if (post.mediaUrl) {
+                    if (post.mediaUrl.endsWith('.mp4') || post.mediaUrl.endsWith('.mov') || post.mediaUrl.includes('video')) {
+                        mediaContent = `<video controls class="w-full mb-4 neubrutalism">
+                            <source src="${post.mediaUrl}" type="video/mp4">
+                        </video>`;
+                    } else {
+                        mediaContent = `<img src="${post.mediaUrl}" class="w-full mb-4 neubrutalism object-cover cursor-pointer" onclick="viewPostDetail('${post._id}')">`;
+                    }
+                }
+
+                const deleteButton = post.username === currentUser.username ? 
+                    `<button onclick="deletePost('${post._id}')" class="text-red-500">
+                        <i class="bi bi-trash"></i> Delete
+                    </button>` : '';
+
+                const timestamp = new Date(post.timestamp).toLocaleString();
+
+                postElement.innerHTML = `
+                    <div class="flex justify-between items-center mb-4">
+                        <div class="flex items-center cursor-pointer" onclick="viewUserProfile('${post.username}')">
+                            <img src="${profilePic}" alt="${post.username}" class="w-10 h-10 rounded-full mr-3 object-cover neubrutalism">
+                            <div>
+                                <div class="font-bold">${post.username}</div>
+                                <div class="text-xs text-gray-500">${timestamp}</div>
+                            </div>
+                        </div>
+                        ${deleteButton}
+                    </div>
+                    ${mediaContent}
+                    <p class="mb-4 cursor-pointer" onclick="viewPostDetail('${post._id}')">${post.content}</p>
+                    <div class="flex items-center space-x-4 mb-4">
+                        <button onclick="toggleLike('${post._id}')" class="flex items-center">
+                            <i class="bi ${post.likes && post.likes.includes(currentUser.username) ? 'bi-heart-fill text-red-500' : 'bi-heart'} text-xl mr-1"></i>
+                            <span>${post.likes ? post.likes.length : 0}</span>
+                        </button>
+                        <button onclick="showComments('${post._id}')" class="flex items-center">
+                            <i class="bi bi-chat text-xl mr-1"></i>
+                            <span>${post.comments ? post.comments.length : 0}</span>
+                        </button>
+                    </div>
+                    <div id="comments-${post._id}" class="hidden mt-4">
+                        <div class="comments-container mb-4">
+                            ${(post.comments || []).map(comment => `
+                                <div class="bg-gray-100 p-3 mb-2 neubrutalism">
+                                    <div class="flex items-center mb-1">
+                                        <strong class="cursor-pointer" onclick="viewUserProfile('${comment.username}')">${comment.username}:</strong>
+                                        <span class="text-xs text-gray-500 ml-2">${new Date(comment.timestamp).toLocaleString()}</span>
+                                    </div>
+                                    <div>${comment.text}</div>
+                                </div>
+                            `).join('')}
+                        </div>
+                        <div class="flex">
+                            <input type="text" placeholder="Add a comment..." 
+                                id="comment-input-${post._id}"
+                                class="flex-1 p-2 neubrutalism">
+                            <button onclick="addComment('${post._id}')" 
+                                class="ml-2 btn-primary p-2 neubrutalism">
+                                Post
+                            </button>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(postElement);
+            } catch (error) {
+                console.error('Render post error:', error);
+            }
+        }
+
+        async function viewPostDetail(postId) {
+            showLoading();
+            try {
+                const response = await fetch('https://r0c8kgwocscg8gsokogwwsw4.zetaverse.one/mongodb', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer cR0B7wyVLcbjtIyuwRyQp7R3y2r2',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        appSlug,
+                        action: 'read',
+                        collection: 'posts',
+                        id: postId
+                    })
+                });
+
+                const data = await response.json();
+                if (data.result && data.result.length > 0) {
+                    const post = data.result[0];
+                    currentPostDetail = post;
+
+                    // Get user profile pic
+                    const userResponse = await fetch('https://r0c8kgwocscg8gsokogwwsw4.zetaverse.one/mongodb', {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': 'Bearer cR0B7wyVLcbjtIyuwRyQp7R3y2r2',
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            appSlug,
+                            action: 'read',
+                            collection: 'users',
+                            conditions: { username: post.username }
+                        })
+                    });
+
+                    const userData = await userResponse.json();
+                    const user = userData.result && userData.result.length > 0 ? userData.result[0] : null;
+                    const profilePic = user && user.profilePicture ? user.profilePicture : 'https://via.placeholder.com/150';
+
+                    const postDetailContent = document.getElementById('postDetailContent');
+                    
+                    let mediaContent = '';
+                    if (post.mediaUrl) {
+                        if (post.mediaUrl.endsWith('.mp4') || post.mediaUrl.endsWith('.mov') || post.mediaUrl.includes('video')) {
+                            mediaContent = `<video controls class="w-full mb-4 neubrutalism">
+                                <source src="${post.mediaUrl}" type="video/mp4">
+                            </video>`;
+                        } else {
+                            mediaContent = `<img src="${post.mediaUrl}" class="w-full mb-4 neubrutalism object-contain max-h-96">`;
+                        }
+                    }
+
+                    const timestamp = new Date(post.timestamp).toLocaleString();
+                    const deleteButton = post.username === currentUser.username ? 
+                        `<button onclick="deletePostFromDetail('${post._id}')" class="text-red-500">
+                            <i class="bi bi-trash"></i> Delete
+                        </button>` : '';
+
+                    postDetailContent.innerHTML = `
+                        <div class="flex justify-between items-center mb-4">
+                            <div class="flex items-center cursor-pointer" onclick="viewUserProfile('${post.username}')">
+                                <img src="${profilePic}" alt="${post.username}" class="w-10 h-10 rounded-full mr-3 object-cover neubrutalism">
+                                <div>
+                                    <div class="font-bold">${post.username}</div>
+                                    <div class="text-xs text-gray-500">${timestamp}</div>
+                                </div>
+                            </div>
+                            ${deleteButton}
+                        </div>
+                        ${mediaContent}
+                        <p class="mb-4">${post.content}</p>
+                        <div class="flex items-center space-x-4 mb-4">
+                            <button onclick="toggleLikeFromDetail('${post._id}')" class="flex items-center">
+                                <i class="bi ${post.likes && post.likes.includes(currentUser.username) ? 'bi-heart-fill text-red-500' : 'bi-heart'} text-xl mr-1"></i>
+                                <span id="detailLikeCount">${post.likes ? post.likes.length : 0}</span>
+                            </button>
+                            <div class="flex items-center">
+                                <i class="bi bi-chat text-xl mr-1"></i>
+                                <span>${post.comments ? post.comments.length : 0}</span>
+                            </div>
+                        </div>
+                        <div class="border-t border-gray-200 pt-4 mt-4">
+                            <h3 class="text-lg font-bold mb-3">Comments</h3>
+                            <div class="comments-container mb-4">
+                                ${(post.comments || []).length > 0 ? (post.comments || []).map(comment => `
+                                    <div class="bg-gray-100 p-3 mb-2 neubrutalism">
+                                        <div class="flex items-center mb-1">
+                                            <strong class="cursor-pointer" onclick="viewUserProfile('${comment.username}')">${comment.username}:</strong>
+                                            <span class="text-xs text-gray-500 ml-2">${new Date(comment.timestamp).toLocaleString()}</span>
+                                        </div>
+                                        <div>${comment.text}</div>
+                                    </div>
+                                `).join('') : '<div class="text-gray-500 p-2">No comments yet. Be the first to comment!</div>'}
+                            </div>
+                            <div class="flex">
+                                <input type="text" placeholder="Add a comment..." 
+                                    id="detail-comment-input"
+                                    class="flex-1 p-2 neubrutalism">
+                                <button onclick="addCommentFromDetail('${post._id}')" 
+                                    class="ml-2 btn-primary p-2 neubrutalism">
+                                    Post
+                                </button>
+                            </div>
+                        </div>
+                    `;
+
+                    document.getElementById('postDetailModal').classList.remove('hidden');
+                }
+            } catch (error) {
+                console.error('View post detail error:', error);
+                alert('Failed to load post details');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        function closePostDetail() {
+            document.getElementById('postDetailModal').classList.add('hidden');
+            currentPostDetail = null;
+        }
+
+        async function toggleLikeFromDetail(postId) {
+            showLoading();
+            try {
+                const response = await fetch('https://r0c8kgwocscg8gsokogwwsw4.zetaverse.one/mongodb', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer cR0B7wyVLcbjtIyuwRyQp7R3y2r2',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        appSlug,
+                        action: 'read',
+                        collection: 'posts',
+                        id: postId
+                    })
+                });
+
+                const data = await response.json();
+                if (data.result && data.result.length > 0) {
+                    const post = data.result[0];
+                    const likes = post.likes || [];
+                    const userIndex = likes.indexOf(currentUser.username);
+                    
+                    if (userIndex === -1) {
+                        likes.push(currentUser.username);
+                    } else {
+                        likes.splice(userIndex, 1);
+                    }
+
+                    const updateResponse = await fetch('https://r0c8kgwocscg8gsokogwwsw4.zetaverse.one/mongodb', {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': 'Bearer cR0B7wyVLcbjtIyuwRyQp7R3y2r2',
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            appSlug,
+                            action: 'update',
+                            collection: 'posts',
+                            id: postId,
+                            data: { likes }
+                        })
+                    });
+
+                    if (updateResponse.ok) {
+                        // Update like icon and count
+                        const likeIcon = document.querySelector('#postDetailContent button i');
+                        const likeCount = document.getElementById('detailLikeCount');
+                        
+                        if (userIndex === -1) {
+                            likeIcon.className = 'bi bi-heart-fill text-red-500 text-xl mr-1';
+                        } else {
+                            likeIcon.className = 'bi bi-heart text-xl mr-1';
+                        }
+                        likeCount.textContent = likes.length;
+                        
+                        // Also update the feed if it's visible
+                        loadFeed();
+                    }
+                }
+            } catch (error) {
+                console.error('Toggle like error:', error);
+            } finally {
+                hideLoading();
+            }
+        }
+
+        async function addCommentFromDetail(postId) {
+            const commentText = document.getElementById('detail-comment-input').value;
+            if (!commentText.trim()) return;
+
+            showLoading();
+            try {
+                // Check for inappropriate content in comment
+                const contentCheckResponse = await fetch('https://r0c8kgwocscg8gsokogwwsw4.zetaverse.one/ai', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer cR0B7wyVLcbjtIyuwRyQp7R3y2r2',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        messages: [{
+                            role: "user",
+                            content: [{
+                                type: "text",
+                                text: `Check if this comment contains inappropriate or offensive content: "${commentText}". Respond only with 'appropriate' if the text is safe, or describe what inappropriate content is detected.`
+                            }]
+                        }]
+                    })
+                });
+
+                const contentCheckData = await contentCheckResponse.json();
+                const contentCheckMessage = contentCheckData.message.toLowerCase();
+                
+                if (contentCheckMessage !== 'appropriate' && 
+                    (contentCheckMessage.includes('inappropriate') || 
+                    contentCheckMessage.includes('harmful') || 
+                    contentCheckMessage.includes('offensive'))) {
+                    alert('Warning: Inappropriate language detected. Comment cannot be posted.');
+                    hideLoading();
+                    return;
+                }
+
+                const response = await fetch('https://r0c8kgwocscg8gsokogwwsw4.zetaverse.one/mongodb', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer cR0B7wyVLcbjtIyuwRyQp7R3y2r2',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        appSlug,
+                        action: 'read',
+                        collection: 'posts',
+                        id: postId
+                    })
+                });
+
+                const data = await response.json();
+                if (data.result && data.result.length > 0) {
+                    const post = data.result[0];
+                    const comments = post.comments || [];
+                    comments.push({
+                        username: currentUser.username,
+                        text: commentText,
+                        timestamp: new Date().toISOString()
+                    });
+
+                    const updateResponse = await fetch('https://r0c8kgwocscg8gsokogwwsw4.zetaverse.one/mongodb', {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': 'Bearer cR0B7wyVLcbjtIyuwRyQp7R3y2r2',
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            appSlug,
+                            action: 'update',
+                            collection: 'posts',
+                            id: postId,
+                            data: { comments }
+                        })
+                    });
+
+                    if (updateResponse.ok) {
+                        document.getElementById('detail-comment-input').value = '';
+                        // Refresh the post detail view
+                        viewPostDetail(postId);
+                        // Also update main feed
+                        loadFeed();
+                    }
+                }
+            } catch (error) {
+                console.error('Add comment error:', error);
+            } finally {
+                hideLoading();
+            }
+        }
+
+        async function deletePostFromDetail(postId) {
+            if (!confirm('Are you sure you want to delete this post?')) return;
+
+            showLoading();
+            try {
+                // Delete post from database
+                const response = await fetch('https://r0c8kgwocscg8gsokogwwsw4.zetaverse.one/mongodb', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer cR0B7wyVLcbjtIyuwRyQp7R3y2r2',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        appSlug,
+                        action: 'delete',
+                        collection: 'posts',
+                        id: postId
+                    })
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    alert('Post deleted successfully');
+                    closePostDetail();
+                    loadFeed();
+                    if (document.getElementById('profileModal').classList.contains('block')) {
+                        loadUserPosts(currentUser.username);
+                    }
+                } else {
+                    alert('Failed to delete post');
+                }
+            } catch (error) {
+                console.error('Delete post error:', error);
+                alert('An error occurred while deleting the post');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        async function deletePost(postId) {
+            if (!confirm('Are you sure you want to delete this post?')) return;
+
+            showLoading();
+            try {
+                // Delete post from database
+                const response = await fetch('https://r0c8kgwocscg8gsokogwwsw4.zetaverse.one/mongodb', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer cR0B7wyVLcbjtIyuwRyQp7R3y2r2',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        appSlug,
+                        action: 'delete',
+                        collection: 'posts',
+                        id: postId
+                    })
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    alert('Post deleted successfully');
+                    loadFeed();
+                    if (document.getElementById('profileModal').classList.contains('block')) {
+                        loadUserPosts(currentUser.username);
+                    }
+                } else {
+                    alert('Failed to delete post');
+                }
+            } catch (error) {
+                console.error('Delete post error:', error);
+                alert('An error occurred while deleting the post');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        // Profile Functions
+        async function showProfile() {
+            showLoading();
+            try {
+                // Get latest user data
+                const response = await fetch('https://r0c8kgwocscg8gsokogwwsw4.zetaverse.one/mongodb', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer cR0B7wyVLcbjtIyuwRyQp7R3y2r2',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        appSlug,
+                        action: 'read',
+                        collection: 'users',
+                        conditions: { username: currentUser.username }
+                    })
+                });
+
+                const data = await response.json();
+                if (data.result && data.result.length > 0) {
+                    currentUser = data.result[0];
+                    document.getElementById('profileUsername').textContent = currentUser.username;
+                    document.getElementById('followerCount').textContent = currentUser.followers ? currentUser.followers.length : 0;
+                    document.getElementById('followingCount').textContent = currentUser.following ? currentUser.following.length : 0;
+                    
+                    if (currentUser.profilePicture) {
+                        document.getElementById('currentProfilePic').src = currentUser.profilePicture;
+                    } else {
+                        document.getElementById('currentProfilePic').src = 'https://via.placeholder.com/150';
+                    }
+
+                    // Load user posts
+                    await loadUserPosts(currentUser.username);
+                    
+                    document.getElementById('profileModal').classList.remove('hidden');
+                    document.getElementById('profileModal').classList.add('block');
+                    document.getElementById('updateProfilePicForm').classList.add('hidden');
+                }
+            } catch (error) {
+                console.error('Show profile error:', error);
+                alert('Failed to load profile information');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        async function loadUserPosts(username) {
+            try {
+                const response = await fetch('https://r0c8kgwocscg8gsokogwwsw4.zetaverse.one/mongodb', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer cR0B7wyVLcbjtIyuwRyQp7R3y2r2',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        appSlug,
+                        action: 'read',
+                        collection: 'posts',
+                        conditions: { username }
+                    })
+                });
+
+                const data = await response.json();
+                const postsContainer = username === currentUser.username ? 
+                    document.getElementById('userPosts') : 
+                    document.getElementById('viewedUserPosts');
+                
+                postsContainer.innerHTML = '';
+
+                if (data.result && data.result.length > 0) {
+                    // Sort posts by timestamp (newest first)
+                    data.result.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+                    
+                    for (const post of data.result) {
+                        await renderUserPost(post, postsContainer, username);
+                    }
+                } else {
+                    postsContainer.innerHTML = `
+                        <div class="text-center p-4 col-span-3">
+                            <p>No posts yet.</p>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('Load user posts error:', error);
+            }
+        }
+
+        async function renderUserPost(post, container, username) {
+            const isCurrentUser = username === currentUser.username;
+            const postElement = document.createElement('div');
+            postElement.className = 'post-container p-4';
+            postElement.setAttribute('data-post-id', post._id);
+            
+            let mediaContent = '';
+            if (post.mediaUrl) {
+                if (post.mediaUrl.endsWith('.mp4') || post.mediaUrl.endsWith('.mov') || post.mediaUrl.includes('video')) {
+                    mediaContent = `<video class="w-full h-48 object-cover mb-3 neubrutalism cursor-pointer" onclick="viewPostDetail('${post._id}')">
+                        <source src="${post.mediaUrl}" type="video/mp4">
+                    </video>`;
+                } else {
+                    mediaContent = `<img src="${post.mediaUrl}" class="w-full h-48 object-cover mb-3 neubrutalism cursor-pointer" onclick="viewPostDetail('${post._id}')">`;
+                }
+            } else {
+                // If no media, show a preview of the text
+                mediaContent = `<div class="w-full h-48 flex items-center justify-center bg-gray-100 mb-3 neubrutalism cursor-pointer p-3 overflow-hidden" onclick="viewPostDetail('${post._id}')">
+                    <p class="line-clamp-5 text-center">${post.content}</p>
+                </div>`;
+            }
+
+            const timestamp = new Date(post.timestamp).toLocaleString();
+
+            postElement.innerHTML = mediaContent + `
+                <div class="flex justify-between items-center mb-2">
+                    <div class="text-xs text-gray-500">${timestamp}</div>
+                    <div class="flex items-center space-x-3">
+                        <div class="flex items-center">
+                            <i class="bi ${post.likes && post.likes.includes(currentUser.username) ? 'bi-heart-fill text-red-500' : 'bi-heart'} mr-1"></i>
+                            <span>${post.likes ? post.likes.length : 0}</span>
+                        </div>
+                        <div class="flex items-center">
+                            <i class="bi bi-chat mr-1"></i>
+                            <span>${post.comments ? post.comments.length : 0}</span>
+                        </div>
+                        ${isCurrentUser ? `
+                        <button onclick="deletePost('${post._id}')" class="text-red-500">
+                            <i class="bi bi-trash"></i>
+                        </button>` : ''}
+                    </div>
+                </div>
+            `;
+            container.appendChild(postElement);
+        }
+
+        function showUpdateProfilePic() {
+            document.getElementById('updateProfilePicForm').classList.toggle('hidden');
+        }
+
+        async function updateProfilePic() {
+            showLoading();
+            const profilePicFile = document.getElementById('newProfilePic').files[0];
+            
+            if (!profilePicFile) {
+                alert('Please select an image');
+                hideLoading();
+                return;
+            }
+
+            try {
+                // Upload new profile picture
+                const formData = new FormData();
+                formData.append('file', profilePicFile);
+                formData.append('userId', currentUser.username);
+                formData.append('appSlug', appSlug);
+
+                const uploadResponse = await fetch('https://r0c8kgwocscg8gsokogwwsw4.zetaverse.one/storage/upload', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer cR0B7wyVLcbjtIyuwRyQp7R3y2r2'
+                    },
+                    body: formData
+                });
+
+                const uploadData = await uploadResponse.json();
+                if (uploadData.success) {
+                    // Check for inappropriate content
+                    const aiResponse = await fetch('https://r0c8kgwocscg8gsokogwwsw4.zetaverse.one/ai', {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': 'Bearer cR0B7wyVLcbjtIyuwRyQp7R3y2r2',
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            messages: [{
+                                role: "user",
+                                content: [{
+                                    type: "text",
+                                    text: "Check if this image contains any inappropriate content, nudity, violence, or harmful material"
+                                }, {
+                                    type: "image_url",
+                                    image_url: { url: uploadData.url }
+                                }]
+                            }]
+                        })
+                    });
+
+                    const aiData = await aiResponse.json();
+                    if (aiData.message.toLowerCase().includes('inappropriate') || 
+                        aiData.message.toLowerCase().includes('nudity') || 
+                        aiData.message.toLowerCase().includes('violence')) {
+                        alert('Warning: Inappropriate content detected. Profile picture cannot be updated.');
+                        hideLoading();
+                        return;
+                    }
+
+                    // Update profile picture in database
+                    const updateResponse = await fetch('https://r0c8kgwocscg8gsokogwwsw4.zetaverse.one/mongodb', {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': 'Bearer cR0B7wyVLcbjtIyuwRyQp7R3y2r2',
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            appSlug,
+                            action: 'update',
+                            collection: 'users',
+                            id: currentUser._id,
+                            data: { profilePicture: uploadData.url }
+                        })
+                    });
+
+                    const updateData = await updateResponse.json();
+                    if (updateData.success) {
+                        currentUser.profilePicture = uploadData.url;
+                        document.getElementById('currentProfilePic').src = uploadData.url;
+                        document.getElementById('newProfilePic').value = '';
+                        document.getElementById('newProfilePicPreview').classList.add('hidden');
+                        document.getElementById('updateProfilePicForm').classList.add('hidden');
+                        alert('Profile picture updated successfully');
+                    } else {
+                        alert('Failed to update profile picture');
+                    }
+                } else {
+                    alert('Failed to upload profile picture');
+                }
+            } catch (error) {
+                console.error('Update profile pic error:', error);
+                alert('An error occurred while updating your profile picture');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        // Social Functions
+        async function toggleLike(postId) {
+            showLoading();
+            try {
+                const response = await fetch('https://r0c8kgwocscg8gsokogwwsw4.zetaverse.one/mongodb', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer cR0B7wyVLcbjtIyuwRyQp7R3y2r2',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        appSlug,
+                        action: 'read',
+                        collection: 'posts',
+                        id: postId
+                    })
+                });
+
+                const data = await response.json();
+                if (data.result && data.result.length > 0) {
+                    const post = data.result[0];
+                    const likes = post.likes || [];
+                    const userIndex = likes.indexOf(currentUser.username);
+                    
+                    if (userIndex === -1) {
+                        likes.push(currentUser.username);
+                    } else {
+                        likes.splice(userIndex, 1);
+                    }
+
+                    const updateResponse = await fetch('https://r0c8kgwocscg8gsokogwwsw4.zetaverse.one/mongodb', {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': 'Bearer cR0B7wyVLcbjtIyuwRyQp7R3y2r2',
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            appSlug,
+                            action: 'update',
+                            collection: 'posts',
+                            id: postId,
+                            data: { likes }
+                        })
+                    });
+
+                    if (updateResponse.ok) {
+                        loadFeed();
+                    }
+                }
+            } catch (error) {
+                console.error('Toggle like error:', error);
+            } finally {
+                hideLoading();
+            }
+        }
+
+        async function addComment(postId) {
+            const commentText = document.getElementById(`comment-input-${postId}`).value;
+            if (!commentText.trim()) return;
+
+            showLoading();
+            try {
+                // Check for inappropriate content in comment
+                const contentCheckResponse = await fetch('https://r0c8kgwocscg8gsokogwwsw4.zetaverse.one/ai', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer cR0B7wyVLcbjtIyuwRyQp7R3y2r2',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        messages: [{
+                            role: "user",
+                            content: [{
+                                type: "text",
+                                text: `Check if this comment contains inappropriate or offensive content: "${commentText}". Respond only with 'appropriate' if the text is safe, or describe what inappropriate content is detected.`
+                            }]
+                        }]
+                    })
+                });
+
+                const contentCheckData = await contentCheckResponse.json();
+                const contentCheckMessage = contentCheckData.message.toLowerCase();
+                
+                if (contentCheckMessage !== 'appropriate' && 
+                    (contentCheckMessage.includes('inappropriate') || 
+                    contentCheckMessage.includes('harmful') || 
+                    contentCheckMessage.includes('offensive'))) {
+                    alert('Warning: Inappropriate language detected. Comment cannot be posted.');
+                    hideLoading();
+                    return;
+                }
+
+                const response = await fetch('https://r0c8kgwocscg8gsokogwwsw4.zetaverse.one/mongodb', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer cR0B7wyVLcbjtIyuwRyQp7R3y2r2',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        appSlug,
+                        action: 'read',
+                        collection: 'posts',
+                        id: postId
+                    })
+                });
+
+                const data = await response.json();
+                if (data.result && data.result.length > 0) {
+                    const post = data.result[0];
+                    const comments = post.comments || [];
+                    comments.push({
+                        username: currentUser.username,
+                        text: commentText,
+                        timestamp: new Date().toISOString()
+                    });
+
+                    const updateResponse = await fetch('https://r0c8kgwocscg8gsokogwwsw4.zetaverse.one/mongodb', {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': 'Bearer cR0B7wyVLcbjtIyuwRyQp7R3y2r2',
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            appSlug,
+                            action: 'update',
+                            collection: 'posts',
+                            id: postId,
+                            data: { comments }
+                        })
+                    });
+
+                    if (updateResponse.ok) {
+                        document.getElementById(`comment-input-${postId}`).value = '';
+                        loadFeed();
+                    }
+                }
+            } catch (error) {
+                console.error('Add comment error:', error);
+            } finally {
+                hideLoading();
+            }
+        }
+
+        // Search users
+        document.getElementById('searchUser').addEventListener('input', async function(e) {
+            const searchTerm = e.target.value;
+            const searchResults = document.getElementById('searchResults');
+            
+            if (searchTerm.length < 2) {
+                searchResults.classList.add('hidden');
+                return;
+            }
+
+            try {
+                const response = await fetch('https://r0c8kgwocscg8gsokogwwsw4.zetaverse.one/mongodb', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer cR0B7wyVLcbjtIyuwRyQp7R3y2r2',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        appSlug,
+                        action: 'read',
+                        collection: 'users',
+                        conditions: {
+                            username: { $regex: searchTerm, $options: 'i' }
+                        }
+                    })
+                });
+
+                const data = await response.json();
+                searchResults.innerHTML = '';
+                
+                if (data.result && data.result.length > 0) {
+                    searchResults.classList.remove('hidden');
+                    
+                    data.result.forEach(user => {
+                        if (user.username === currentUser.username) return;
+                        
+                        const userElement = document.createElement('div');
+                        userElement.className = 'p-2 hover:bg-gray-100 cursor-pointer flex items-center';
+                        userElement.innerHTML = `
+                            <img src="${user.profilePicture || 'https://via.placeholder.com/150'}" 
+                                alt="${user.username}" 
+                                class="w-8 h-8 rounded-full mr-2 object-cover">
+                            <span>${user.username}</span>
+                        `;
+                        userElement.onclick = () => {
+                            viewUserProfile(user.username);
+                            searchResults.classList.add('hidden');
+                            document.getElementById('searchUser').value = '';
+                        };
+                        searchResults.appendChild(userElement);
+                    });
+                } else {
+                    searchResults.classList.remove('hidden');
+                    searchResults.innerHTML = '<div class="p-2">No users found</div>';
+                }
+            } catch (error) {
+                console.error('Search users error:', error);
+            }
+        });
+
+        // Click outside search results to close
+        document.addEventListener('click', function(event) {
+            const searchResults = document.getElementById('searchResults');
+            const searchInput = document.getElementById('searchUser');
+            
+            if (!searchResults.contains(event.target) && event.target !== searchInput) {
+                searchResults.classList.add('hidden');
+            }
+
+            const messageSearchResults = document.getElementById('messageSearchResults');
+            const messageSearchInput = document.getElementById('messageSearchUser');
+            
+            if (messageSearchResults && messageSearchInput && 
+                !messageSearchResults.contains(event.target) && event.target !== messageSearchInput) {
+                messageSearchResults.classList.add('hidden');
+            }
+        });
+
+        async function viewUserProfile(username) {
+            if (username === currentUser.username) {
+                showProfile();
+                return;
+            }
+
+            showLoading();
+            try {
+                const response = await fetch('https://r0c8kgwocscg8gsokogwwsw4.zetaverse.one/mongodb', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer cR0B7wyVLcbjtIyuwRyQp7R3y2r2',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        appSlug,
+                        action: 'read',
+                        collection: 'users',
+                        conditions: { username }
+                    })
+                });
+
+                const data = await response.json();
+                if (data.result && data.result.length > 0) {
+                    const user = data.result[0];
+                    currentViewedUser = user;
+                    
+                    document.getElementById('userProfileName').textContent = user.username;
+                    document.getElementById('userFollowerCount').textContent = user.followers ? user.followers.length : 0;
+                    document.getElementById('userFollowingCount').textContent = user.following ? user.following.length : 0;
+                    
+                    if (user.profilePicture) {
+                        document.getElementById('userProfilePic').src = user.profilePicture;
+                    } else {
+                        document.getElementById('userProfilePic').src = 'https://via.placeholder.com/150';
+                    }
+
+                    // Set follow button text
+                    const isFollowing = user.followers && user.followers.includes(currentUser.username);
+                    const followBtn = document.getElementById('followToggleBtn');
+                    followBtn.textContent = isFollowing ? 'Unfollow' : 'Follow';
+                    followBtn.className = isFollowing ? 'btn-danger p-2 neubrutalism' : 'btn-primary p-2 neubrutalism';
+
+                    // Load user posts
+                    await loadUserPosts(username);
+                    
+                    document.getElementById('userProfileModal').classList.remove('hidden');
+                    document.getElementById('userProfileModal').classList.add('block');
+                }
+            } catch (error) {
+                console.error('View user profile error:', error);
+                alert('Failed to load user profile');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        async function toggleFollow() {
+            if (!currentViewedUser) return;
+            
+            showLoading();
+            try {
+                // Get fresh data for both users
+                const viewedUserResponse = await fetch('https://r0c8kgwocscg8gsokogwwsw4.zetaverse.one/mongodb', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer cR0B7wyVLcbjtIyuwRyQp7R3y2r2',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        appSlug,
+                        action: 'read',
+                        collection: 'users',
+                        conditions: { username: currentViewedUser.username }
+                    })
+                });
+                
+                const currentUserResponse = await fetch('https://r0c8kgwocscg8gsokogwwsw4.zetaverse.one/mongodb', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer cR0B7wyVLcbjtIyuwRyQp7R3y2r2',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        appSlug,
+                        action: 'read',
+                        collection: 'users',
+                        conditions: { username: currentUser.username }
+                    })
+                });
+
+                const viewedUserData = await viewedUserResponse.json();
+                const currentUserData = await currentUserResponse.json();
+                
+                if (viewedUserData.result && viewedUserData.result.length > 0 && 
+                    currentUserData.result && currentUserData.result.length > 0) {
+                    
+                    const viewedUser = viewedUserData.result[0];
+                    const updatedCurrentUser = currentUserData.result[0];
+                    
+                    // Update followers and following arrays
+                    let viewedUserFollowers = viewedUser.followers || [];
+                    let currentUserFollowing = updatedCurrentUser.following || [];
+                    
+                    const isFollowing = viewedUserFollowers.includes(currentUser.username);
+                    
+                    if (isFollowing) {
+                        // Unfollow
+                        viewedUserFollowers = viewedUserFollowers.filter(username => username !== currentUser.username);
+                        currentUserFollowing = currentUserFollowing.filter(username => username !== viewedUser.username);
+                    } else {
+                        // Follow
+                        viewedUserFollowers.push(currentUser.username);
+                        currentUserFollowing.push(viewedUser.username);
+                    }
+                    
+                    // Update viewed user's followers
+                    await fetch('https://r0c8kgwocscg8gsokogwwsw4.zetaverse.one/mongodb', {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': 'Bearer cR0B7wyVLcbjtIyuwRyQp7R3y2r2',
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            appSlug,
+                            action: 'update',
+                            collection: 'users',
+                            id: viewedUser._id,
+                            data: { followers: viewedUserFollowers }
+                        })
+                    });
+                    
+                    // Update current user's following
+                    await fetch('https://r0c8kgwocscg8gsokogwwsw4.zetaverse.one/mongodb', {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': 'Bearer cR0B7wyVLcbjtIyuwRyQp7R3y2r2',
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            appSlug,
+                            action: 'update',
+                            collection: 'users',
+                            id: updatedCurrentUser._id,
+                            data: { following: currentUserFollowing }
+                        })
+                    });
+                    
+                    // Update UI
+                    currentUser = updatedCurrentUser;
+                    currentUser.following = currentUserFollowing;
+                    currentViewedUser = viewedUser;
+                    currentViewedUser.followers = viewedUserFollowers;
+                    
+                    document.getElementById('userFollowerCount').textContent = viewedUserFollowers.length;
+                    
+                    const followBtn = document.getElementById('followToggleBtn');
+                    followBtn.textContent = isFollowing ? 'Follow' : 'Unfollow';
+                    followBtn.className = isFollowing ? 'btn-primary p-2 neubrutalism' : 'btn-danger p-2 neubrutalism';
+                }
+            } catch (error) {
+                console.error('Toggle follow error:', error);
+                alert('Failed to update follow status');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        // Messaging Functions
+        function showMessages() {
+            document.getElementById('messagesModal').classList.remove('hidden');
+            loadConversations();
+        }
+
+        function closeMessages() {
+            document.getElementById('messagesModal').classList.add('hidden');
+            currentChatUser = null;
+        }
+
+        async function loadConversations() {
+            showLoading();
+            try {
+                const response = await fetch('https://r0c8kgwocscg8gsokogwwsw4.zetaverse.one/mongodb', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer cR0B7wyVLcbjtIyuwRyQp7R3y2r2',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        appSlug,
+                        action: 'read',
+                        collection: 'conversations',
+                        conditions: {
+                            $or: [
+                                { 'participants.username': currentUser.username }
+                            ]
+                        }
+                    })
+                });
+
+                const data = await response.json();
+                const conversationsList = document.getElementById('conversationsList');
+                conversationsList.innerHTML = '';
+                
+                if (data.result && data.result.length > 0) {
+                    conversations = data.result;
+                    
+                    // Sort conversations by lastMessageTime (newest first)
+                    conversations.sort((a, b) => {
+                        const timeA = a.lastMessageTime ? new Date(a.lastMessageTime) : new Date(0);
+                        const timeB = b.lastMessageTime ? new Date(b.lastMessageTime) : new Date(0);
+                        return timeB - timeA;
+                    });
+                    
+                    for (const conversation of conversations) {
+                        // Find the other participant (not current user)
+                        const otherParticipant = conversation.participants.find(p => p.username !== currentUser.username);
+                        
+                        if (otherParticipant) {
+                            const conversationElement = document.createElement('div');
+                            conversationElement.className = 'p-2 hover:bg-gray-100 cursor-pointer flex items-center border-b border-gray-200';
+                            conversationElement.innerHTML = `
+                                <img src="${otherParticipant.profilePicture || 'https://via.placeholder.com/150'}" 
+                                    alt="${otherParticipant.username}" 
+                                    class="w-10 h-10 rounded-full mr-2 object-cover neubrutalism">
+                                <div class="flex-1">
+                                    <div class="font-bold">${otherParticipant.username}</div>
+                                    <div class="text-xs text-gray-500 truncate">${conversation.lastMessage || 'Start a conversation...'}</div>
+                                </div>
+                                ${conversation.unreadCount && conversation.unreadCount[currentUser.username] > 0 ? 
+                                    `<div class="bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
+                                        ${conversation.unreadCount[currentUser.username]}
+                                    </div>` : ''}
+                            `;
+                            conversationElement.onclick = () => {
+                                openConversation(conversation._id, otherParticipant);
+                            };
+                            conversationsList.appendChild(conversationElement);
+                        }
+                    }
+                } else {
+                    conversationsList.innerHTML = `
+                        <div class="text-center p-4 text-gray-500">
+                            <p>No conversations yet</p>
+                            <p class="text-sm">Search for users to start messaging</p>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('Load conversations error:', error);
+                document.getElementById('conversationsList').innerHTML = `
+                    <div class="text-center p-4 text-red-500">
+                        <p>Failed to load conversations</p>
+                        <button onclick="loadConversations()" class="mt-2 btn-primary p-2 neubrutalism text-sm">
+                            Retry
+                        </button>
+                    </div>
+                `;
+            } finally {
+                hideLoading();
+            }
+            
+            // Setup message search
+            setupMessageSearch();
+        }
+
+        function setupMessageSearch() {
+            document.getElementById('messageSearchUser').addEventListener('input', async function(e) {
+                const searchTerm = e.target.value;
+                const searchResults = document.getElementById('messageSearchResults');
+                
+                if (searchTerm.length < 2) {
+                    searchResults.classList.add('hidden');
+                    return;
+                }
+
+                try {
+                    const response = await fetch('https://r0c8kgwocscg8gsokogwwsw4.zetaverse.one/mongodb', {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': 'Bearer cR0B7wyVLcbjtIyuwRyQp7R3y2r2',
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            appSlug,
+                            action: 'read',
+                            collection: 'users',
+                            conditions: {
+                                username: { $regex: searchTerm, $options: 'i' }
+                            }
+                        })
+                    });
+
+                    const data = await response.json();
+                    searchResults.innerHTML = '';
+                    
+                    if (data.result && data.result.length > 0) {
+                        searchResults.classList.remove('hidden');
+                        
+                        data.result.forEach(user => {
+                            if (user.username === currentUser.username) return;
+                            
+                            const userElement = document.createElement('div');
+                            userElement.className = 'p-2 hover:bg-gray-100 cursor-pointer flex items-center';
+                            userElement.innerHTML = `
+                                <img src="${user.profilePicture || 'https://via.placeholder.com/150'}" 
+                                    alt="${user.username}" 
+                                    class="w-8 h-8 rounded-full mr-2 object-cover">
+                                <span>${user.username}</span>
+                            `;
+                            userElement.onclick = () => {
+                                startDirectMessage(user);
+                                searchResults.classList.add('hidden');
+                                document.getElementById('messageSearchUser').value = '';
+                            };
+                            searchResults.appendChild(userElement);
+                        });
+                    } else {
+                        searchResults.classList.remove('hidden');
+                        searchResults.innerHTML = '<div class="p-2">No users found</div>';
+                    }
+                } catch (error) {
+                    console.error('Search users for messaging error:', error);
+                }
+            });
+        }
+
+        async function startDirectMessage(user) {
+            // Find existing conversation or create new one
+            let existingConversation = conversations.find(conv => 
+                conv.participants.some(p => p.username === user.username)
+            );
+            
+            if (existingConversation) {
+                // Use existing conversation
+                const otherParticipant = existingConversation.participants.find(p => p.username === user.username);
+                openConversation(existingConversation._id, otherParticipant);
+            } else {
+                // Create new conversation
+                await createNewConversation(user);
+            }
+        }
+
+        async function createNewConversation(user) {
+            showLoading();
+            try {
+                const response = await fetch('https://r0c8kgwocscg8gsokogwwsw4.zetaverse.one/mongodb', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer cR0B7wyVLcbjtIyuwRyQp7R3y2r2',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        appSlug,
+                        action: 'create',
+                        collection: 'conversations',
+                        data: {
+                            participants: [
+                                {
+                                    username: currentUser.username,
+                                    profilePicture: currentUser.profilePicture || ''
+                                },
+                                {
+                                    username: user.username,
+                                    profilePicture: user.profilePicture || ''
+                                }
+                            ],
+                            messages: [],
+                            createdAt: new Date().toISOString(),
+                            lastMessageTime: null,
+                            lastMessage: null,
+                            unreadCount: {
+                                [currentUser.username]: 0,
+                                [user.username]: 0
+                            }
+                        }
+                    })
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    // Reload conversations and open the new one
+                    await loadConversations();
+                    
+                    // Find the newly created conversation
+                    const newConvResponse = await fetch('https://r0c8kgwocscg8gsokogwwsw4.zetaverse.one/mongodb', {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': 'Bearer cR0B7wyVLcbjtIyuwRyQp7R3y2r2',
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            appSlug,
+                            action: 'read',
+                            collection: 'conversations',
+                            id: data.result.insertedId
+                        })
+                    });
+                    
+                    const newConvData = await newConvResponse.json();
+                    if (newConvData.result && newConvData.result.length > 0) {
+                        const conversation = newConvData.result[0];
+                        const otherParticipant = conversation.participants.find(p => p.username === user.username);
+                        openConversation(conversation._id, otherParticipant);
+                    }
+                }
+            } catch (error) {
+                console.error('Create conversation error:', error);
+                alert('Failed to create conversation');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        async function openConversation(conversationId, otherUser) {
+            showLoading();
+            try {
+                currentChatUser = otherUser;
+                
+                // Update header
+                document.getElementById('currentChatHeader').innerHTML = `
+                    <div class="flex items-center">
+                        <img src="${otherUser.profilePicture || 'https://via.placeholder.com/150'}" 
+                            alt="${otherUser.username}" 
+                            class="w-8 h-8 rounded-full mr-2 object-cover neubrutalism">
+                        <div class="font-bold">${otherUser.username}</div>
+                    </div>
+                `;
+                
+                // Show send message form
+                document.getElementById('sendMessageForm').classList.remove('hidden');
+                
+                // Fetch latest conversation data
+                const response = await fetch('https://r0c8kgwocscg8gsokogwwsw4.zetaverse.one/mongodb', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer cR0B7wyVLcbjtIyuwRyQp7R3y2r2',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        appSlug,
+                        action: 'read',
+                        collection: 'conversations',
+                        id: conversationId
+                    })
+                });
+
+                const data = await response.json();
+                if (data.result && data.result.length > 0) {
+                    const conversation = data.result[0];
+                    
+                    // Display messages
+                    displayMessages(conversation);
+                    
+                    // Mark messages as read
+                    if (conversation.unreadCount && conversation.unreadCount[currentUser.username] > 0) {
+                        const unreadCount = {...conversation.unreadCount};
+                        unreadCount[currentUser.username] = 0;
+                        
+                        await fetch('https://r0c8kgwocscg8gsokogwwsw4.zetaverse.one/mongodb', {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': 'Bearer cR0B7wyVLcbjtIyuwRyQp7R3y2r2',
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                appSlug,
+                                action: 'update',
+                                collection: 'conversations',
+                                id: conversationId,
+                                data: { unreadCount }
+                            })
+                        });
+                    }
+                }
+            } catch (error) {
+                console.error('Open conversation error:', error);
+            } finally {
+                hideLoading();
+            }
+        }
+
+        function displayMessages(conversation) {
+            const messagesContainer = document.getElementById('messageThread');
+            messagesContainer.innerHTML = '';
+            
+            if (!conversation.messages || conversation.messages.length === 0) {
+                messagesContainer.innerHTML = `
+                    <div class="text-center p-4 text-gray-500">
+                        <p>No messages yet</p>
+                        <p class="text-sm">Send a message to start the conversation</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            for (const message of conversation.messages) {
+                const isSentByMe = message.sender === currentUser.username;
+                const messageEl = document.createElement('div');
+                messageEl.className = `message-bubble p-3 ${isSentByMe ? 'message-sent' : 'message-received'}`;
+                
+                messageEl.innerHTML = `
+                    <div class="text-sm ${isSentByMe ? 'text-right' : ''}">
+                        <div>${message.text}</div>
+                        <div class="text-xs opacity-70 mt-1">${new Date(message.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
+                    </div>
+                `;
+                
+                messagesContainer.appendChild(messageEl);
+            }
+            
+            // Scroll to bottom
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        async function sendMessage() {
+            if (!currentChatUser) return;
+            
+            const messageText = document.getElementById('messageInput').value.trim();
+            if (!messageText) return;
+            
+            showLoading();
+            try {
+                // Check for inappropriate content
+                const contentCheckResponse = await fetch('https://r0c8kgwocscg8gsokogwwsw4.zetaverse.one/ai', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer cR0B7wyVLcbjtIyuwRyQp7R3y2r2',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        messages: [{
+                            role: "user",
+                            content: [{
+                                type: "text",
+                                text: `Check if this message contains inappropriate or offensive content: "${messageText}". Respond only with 'appropriate' if the text is safe, or describe what inappropriate content is detected.`
+                            }]
+                        }]
+                    })
+                });
+
+                const contentCheckData = await contentCheckResponse.json();
+                const contentCheckMessage = contentCheckData.message.toLowerCase();
+                
+                if (contentCheckMessage !== 'appropriate' && 
+                    (contentCheckMessage.includes('inappropriate') || 
+                    contentCheckMessage.includes('harmful') || 
+                    contentCheckMessage.includes('offensive'))) {
+                    alert('Warning: Inappropriate language detected. Message cannot be sent.');
+                    hideLoading();
+                    return;
+                }
+                
+                // Find the conversation
+                const conversation = conversations.find(conv => 
+                    conv.participants.some(p => p.username === currentChatUser.username)
+                );
+                
+                if (conversation) {
+                    // Create message object
+                    const newMessage = {
+                        sender: currentUser.username,
+                        text: messageText,
+                        timestamp: new Date().toISOString()
+                    };
+                    
+                    // Add message to conversation
+                    const messages = [...conversation.messages || [], newMessage];
+                    
+                    // Update unread count for recipient
+                    const unreadCount = {...conversation.unreadCount};
+                    unreadCount[currentChatUser.username] = (unreadCount[currentChatUser.username] || 0) + 1;
+                    
+                    // Update conversation in database
+                    const response = await fetch('https://r0c8kgwocscg8gsokogwwsw4.zetaverse.one/mongodb', {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': 'Bearer cR0B7wyVLcbjtIyuwRyQp7R3y2r2',
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            appSlug,
+                            action: 'update',
+                            collection: 'conversations',
+                            id: conversation._id,
+                            data: {
+                                messages,
+                                lastMessage: messageText,
+                                lastMessageTime: newMessage.timestamp,
+                                unreadCount
+                            }
+                        })
+                    });
+                    
+                    if (response.ok) {
+                        // Clear input
+                        document.getElementById('messageInput').value = '';
+                        
+                        // Update conversation object and reload
+                        conversation.messages = messages;
+                        conversation.lastMessage = messageText;
+                        conversation.lastMessageTime = newMessage.timestamp;
+                        conversation.unreadCount = unreadCount;
+                        
+                        displayMessages(conversation);
+                        loadConversations();
+                    }
+                }
+            } catch (error) {
+                console.error('Send message error:', error);
+                alert('Failed to send message');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        // Add event listener for Enter key in message input
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('messageInput').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    sendMessage();
+                }
+            });
+        });
+
+        function startConversation() {
+            if (!currentViewedUser) return;
+            
+            closeUserProfile();
+            showMessages();
+            
+            // Find or create conversation with viewed user
+            const user = {
+                username: currentViewedUser.username,
+                profilePicture: currentViewedUser.profilePicture
+            };
+            
+            startDirectMessage(user);
+        }
+
+        function showComments(postId) {
+            document.getElementById(`comments-${postId}`).classList.toggle('hidden');
+        }
+
+        function closeProfile() {
+            document.getElementById('profileModal').classList.remove('block');
+            document.getElementById('profileModal').classList.add('hidden');
+        }
+
+        function closeUserProfile() {
+            document.getElementById('userProfileModal').classList.remove('block');
+            document.getElementById('userProfileModal').classList.add('hidden');
+            currentViewedUser = null;
+        }
+
+        // UI Helper Functions
+        function toggleAuth() {
+            document.getElementById('loginForm').classList.toggle('hidden');
+            document.getElementById('registerForm').classList.toggle('hidden');
+        }
+
+        function showCreatePost() {
+            document.getElementById('createPostModal').classList.remove('hidden');
+            document.getElementById('postContent').value = '';
+            document.getElementById('mediaUpload').value = '';
+            document.getElementById('imagePreview').classList.add('hidden');
+        }
+
+        function closeCreatePost() {
+            document.getElementById('createPostModal').classList.add('hidden');
+            document.getElementById('postContent').value = '';
+            document.getElementById('mediaUpload').value = '';
+            document.getElementById('imagePreview').classList.add('hidden');
+        }
+
+        function logout() {
+            if (confirm('Are you sure you want to log out?')) {
+                currentUser = null;
+                document.getElementById('authContainer').classList.remove('hidden');
+                document.getElementById('appContainer').classList.add('hidden');
+                document.getElementById('loginUsername').value = '';
+                document.getElementById('loginPassword').value = '';
+            }
+        }
+
+        // File Preview Functions
+        document.getElementById('mediaUpload').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const preview = document.getElementById('imagePreview');
+                    preview.src = e.target.result;
+                    preview.classList.remove('hidden');
+                }
+                reader.readAsDataURL(file);
+            }
+        });
+
+        document.getElementById('profilePicUpload').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const preview = document.getElementById('profileImagePreview');
+                    preview.src = e.target.result;
+                    preview.classList.remove('hidden');
+                }
+                reader.readAsDataURL(file);
+            }
+        });
+
+        document.getElementById('newProfilePic').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const preview = document.getElementById('newProfilePicPreview');
+                    preview.src = e.target.result;
+                    preview.classList.remove('hidden');
+                }
+                reader.readAsDataURL(file);
+            }
+        });
+    </script>
+<script>document.body.addEventListener('wheel', e => { if (!e.ctrlKey) return; e.preventDefault(); return }, { passive: false })</script>
+	</body>
+</html>
